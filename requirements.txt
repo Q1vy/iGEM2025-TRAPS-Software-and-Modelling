@@ -1,0 +1,8 @@
+jupyterlab
+scipy
+pandas
+matplotlib
+tqdm
+joblib # only for parallel processing benchmark
+dask  # only for parallel processing benchmark
+numba
