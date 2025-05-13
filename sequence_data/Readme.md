@@ -3,3 +3,6 @@
 
 ## mCherry 
  - Sequenced by Microsynth Seqlab GmbH, Maschmuehlenweg 36, 37081 Goettingen, Germany 
+ 
+## Baseline TPMs
+ - from ebi expression atlas
