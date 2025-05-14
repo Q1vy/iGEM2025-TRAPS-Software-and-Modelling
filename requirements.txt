@@ -5,5 +5,5 @@ matplotlib
 tqdm
 joblib # only for the parallel procesing benchmark
 dask # only for the parallel procesing benchmark
-dask distributed # only for the parallel procesing benchmark
+distributed # only for the parallel procesing benchmark
 numba
