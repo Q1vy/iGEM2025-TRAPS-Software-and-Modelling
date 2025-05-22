@@ -1,0 +1,13 @@
+name: igem
+channels:
+  - conda-forge
+dependencies:
+  - jupyterlab
+  - scipy
+  - pandas
+  - matplotlib
+  - tqdm
+  - joblib
+  - dask
+  - distributed
+  - numba
