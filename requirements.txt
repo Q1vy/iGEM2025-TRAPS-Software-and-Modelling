@@ -8,3 +8,4 @@ joblib # only for the parallel procesing benchmark
 dask # only for the parallel procesing benchmark
 distributed # only for the parallel procesing benchmark
 numba
+scikit-learn
