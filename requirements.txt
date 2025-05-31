@@ -1,8 +1,11 @@
+# usage: pip install -r requirements.txt
 jupyterlab
 scipy
 pandas
 matplotlib
 tqdm
-joblib # only for parallel processing benchmark
-dask  # only for parallel processing benchmark
+joblib # only for the parallel procesing benchmark
+dask # only for the parallel procesing benchmark
+distributed # only for the parallel procesing benchmark
 numba
+scikit-learn
