@@ -1,9 +1,11 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 from numba import njit
 import pandas as pd
 import warnings
 import pathlib
+
 
 
 
@@ -263,6 +265,187 @@ def query_sc_summary(query:pd.Series, reference_dataset:pd.DataFrame, target:pd.
     return sc_summary
 
 
+
+import scipy.stats as stats
+
+def fig_dim(n):
+    r = n/(1.25*n**.5)
+    y = np.ceil(r * (r**2/(r**2+5)))
+    x = np.ceil(n/y)
+    ncol = x
+    nrow = y
+    for o in np.arange(-0.33*x, 0.5*x).round():
+        _x = x+o
+        _y = math.ceil(n/_x)
+        if (_x*_y-n < nrow*ncol-n):
+            ncol = x
+            nrow = y
+    return int(min(nrow, ncol)), int(max(ncol, nrow))
+
+def df_PCA(df, show_cols = None, exclude_cols = ["POSITION"]):
+    '''plots results of all queries in a PCA scatterplot. cols = DAtaFrame columns to plot. All numeric columns are used for PCA.
+    show_cols = columns to plot. Default = None = all columns
+    exclude_cols = columns to exclude from PCA. All non-numeric columns are ignored either way.'''
+    df = df.copy()
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.decomposition import PCA
+    exclude_cols = [col for col in df.columns if np.any([exc in col for exc in exclude_cols])]
+    data = StandardScaler().fit_transform(df.select_dtypes(np.number).drop(exclude_cols, axis = 1))
+    PCA1, PCA2 = PCA(n_components=2).fit_transform(data).T
+    dfn = df.select_dtypes(np.number)
+
+    if type(show_cols) == type(None):
+        columns = dfn.columns
+    else:
+        columns = [col for col in show_cols if col in dfn.columns]
+
+    nrow, ncol = fig_dim(len(columns))
+
+    fig, axes = plt.subplots(nrow, ncol, figsize = (2.5*ncol, 2*nrow))
+    for col, ax in zip(columns, np.array([axes]).flatten()):
+        points = ax.scatter(PCA1, PCA2, c = dfn[col], s = 5, alpha = 1, cmap = ["Spectral_r", "Spectral"][int(col == "POSITION")]) # Position has the cmap the other way around to be consistent with the table, while all other numbers use _r so that high = bad numbers = red similar to table again
+        ax.set_title(col)
+        ax.set_yticks([])
+        ax.set_xticks([])
+        plt.colorbar(points, ax = ax)
+    plt.tight_layout()
+    plt.show()
+
+def df_map(df, columns = ["identical match", "1nt mismatch", "2nt mismatch", "boltzmann factor"]):
+    '''Visualize the number of offtarget binding sites and boltzmann factors of all queries from the target sequence'''
+    df = df.copy()
+    for col in columns:
+        _cols = df.columns[np.array([col in _c for _c in df.columns])]
+        col1 = _cols[["sum" in _c for _c in _cols]][0]
+        col2 = _cols[["max" in _c for _c in _cols]][0]
+        print(col1)
+        _min = 0
+        if "W." in col1: _min = 0
+        sel = df[df[col2]==_min]
+
+        plt.figure(figsize = (20, 3))
+        sy = np.round(0.66 * df[col1].mean() / df[col2].mean(), 0).astype(int) # rescaling for the lower half of the plot, only visual
+        plt.bar(df.POSITION,  df[col1].values, label = "total sum in transcriptome", width = 1, color = "tab:cyan")
+        plt.bar(df.POSITION, -df[col2].values*sy,  label = "max per transcript", width = 1, color = "tab:purple")
+        if len(sel) > 0 and df[col2].min() == 0:
+            plt.bar(sel.POSITION, .04*df[col1].max(), bottom = -.02*df[col2].max()*sy, label = f"no {col} off-target binding sites in any transcript", color = "black", width = 1)
+        plt.xlabel("target candidates")
+        yl = plt.yticks()[0]
+        yl[yl<0] /= sy
+        yl = np.unique(yl.round().astype(int))
+        yt = yl.copy()
+        yt[yt<0] *= sy
+        plt.yticks(yt, np.abs(yl))
+        plt.legend();
+
+        if not  "oltzman" in col:
+            plt.ylabel(f"number of {col} \n off-target binding sites");
+
+            if len(sel) == 0:
+                plt.title(f"no candidate without {col} off-target binding sites found")
+            elif df[col2].min() == 0:
+                plt.title(f"{len(sel)} candidates without {col} off-target binding sites found")
+            else:
+                plt.title(f"{len(sel)} candidates with max {round(df[col2].min())}x {col} off-target binding sites found")
+        else: 
+            plt.title("relative boltzmann factors normalised to BF of target sequence")
+            plt.ylabel(f"{col} of \n off-target binding sites");
+
+
+        plt.show()
+
+def _col_weights(col):
+    col_name = col.name
+    if "W." in col_name: m = 2
+    else: m = 1
+    if "identical" in col_name or "boltzman" in col_name:    return m*1
+    elif "1nt" in col_name:                                  return m*1/2
+    elif "2nt" in col_name:                                  return m*1/4
+    else:                                                    return m*1/8
+
+def nice_format(var, digits = 3):
+
+        try:
+            x = float(var)
+            if var == 0: return int(0)
+            if np.isnan(var): return "---"
+            mag = -int(np.floor(np.log10(x))-digits+1)
+            num = np.round(x, mag)
+            if mag > 0:
+                if int(var) == var: return int(var)
+                return (f"{num:.{mag}f}")
+            else: 
+                return (f"{int(num)}")    
+        except: return var
+
+def df_table(DF, select_by_max = "selected", ignore_columns_like = ["VIR", "WEIGHT"]):
+
+    col_names = list(DF.columns)
+    levels = col_names.copy()
+    for i, col in enumerate(col_names):
+        candidate = col
+        found = False
+        while True:
+            d =  max([candidate[:-1].rfind(d) for d in [" "]])
+            if d == -1: break; # no more splitting possible
+            candidate = col[:d+1]
+            if sum([s.startswith(candidate) for s in col_names]) > 1: found = True; break; # found common column name substring
+        if found:
+            k = col.find(candidate) + len(candidate)
+            levels[i] = (col[:k], col[k:])
+        else: levels[i] = (col, "")
+    levels  
+
+    df = DF.copy().sort_index()
+    if type(select_by_max) == str: 
+        if select_by_max in DF.columns:
+            df = DF[DF[select_by_max] == DF[select_by_max].max()].copy().sort_index()
+
+    median = DF.select_dtypes("number").median()
+    median[[col for col in df.columns if col.startswith("POSITION")]] = np.nan 
+    _df = pd.concat([df, pd.DataFrame([median], index = [None])], axis = 0, join = "outer")
+    _df.columns = pd.MultiIndex.from_tuples(levels) 
+
+    position_cols = [col for col in _df.columns if col[0].startswith("POSITION")]
+
+    header0  = {'selector': 'th.col_heading.level0', 'props': 'font-size: 1.5em;'}
+    header1  = {'selector': 'th.col_heading.level1', 'props': 'border-bottom: 5px solid white'}
+    footer  = {'selector': '.data', 'props': 'border-top: 2px solid white'}
+    general = {'selector': 'th, td',                     'props': 'text-align: center;'}
+    #_df = _df.reset_index(names = ["position"])
+
+    _s = _df.style.background_gradient(axis=0, cmap = "Spectral", subset=position_cols, vmin = 0, vmax = DF.filter(like = "POSITION").max().max() ).hide(axis='index')
+
+    for col in _df.drop(position_cols, axis = 1).select_dtypes("number").columns:
+        _s = _s.background_gradient(axis=0, cmap = "coolwarm", subset = [col], vmax = (DF[col[0] + col[1]].median()*2 - DF[col[0] + col[1]].min()) + 1e-12, vmin = (1*DF[col[0] + col[1]].min()) - 1e-12 )
+    _s = _s.hide([col for col in _df.columns if np.any([pattern in col[1] for pattern in ignore_columns_like]) or np.any([pattern in col[0] for pattern in [select_by_max]+ignore_columns_like])], axis = 1,)
+    _s = _s.format(nice_format).format((lambda x: f"{x:.0f}" if not np.isnan(x)  else "DF.Median"), subset = position_cols).set_table_styles([header0, header1, general, footer])
+    _s = _s.set_table_styles({head: [{'selector': 'th, td', 'props': 'border-left: 5px solid white'}] for head in _df.columns if (head[1].startswith("max")) or (head[1] == "")}, overwrite=False, axis=0)
+    _s = _s.set_table_styles({pc:[{'selector': 'td', 'props': "font-weight: bold"}] for pc in position_cols},  overwrite=False, axis=0)
+    _s = _s.set_table_styles({("SEQUENCE", ""):[{'selector': 'td', 'props': "font-family: monospace"}]},  overwrite=False, axis=0)
+    display(_s)
+
+def flatten(nested_list):
+    flat_list = []
+    for item in nested_list:
+        if isinstance(item, list):
+            flat_list.extend(flatten(item))  # Recursively flatten
+        else:
+            flat_list.append(item)
+    return flat_list
+
+def str_multisplit(string, substring_list):
+    for k, delimiter in enumerate(substring_list):
+        if k == 0: split = string.split(delimiter)
+        else: split = flatten(s.split(delimiter) for s in split)
+    return split
+
+def str_alt_split(string, substring):
+    '''splits at the end of the substring without removing the substring, but trimming the split results'''
+    i = string.find(substring) + len(substring)
+    if i == -1:
+        return string
+    else: return [string[:i].strip(), string[i:].strip()]
 
 import scipy.stats as stats
 import math
