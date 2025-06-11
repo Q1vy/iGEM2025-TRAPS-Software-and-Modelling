@@ -282,7 +282,7 @@ def fig_dim(n):
             nrow = y
     return int(min(nrow, ncol)), int(max(ncol, nrow))
 
-def df_PCA(df, show_cols = None, exclude_cols = ["POSITION"]):
+def df_PCA(df, show_cols = None, exclude_cols = ["POSITION", "WEIGHT"]):
     '''plots results of all queries in a PCA scatterplot. cols = DAtaFrame columns to plot. All numeric columns are used for PCA.
     show_cols = columns to plot. Default = None = all columns
     exclude_cols = columns to exclude from PCA. All non-numeric columns are ignored either way.'''
@@ -290,7 +290,7 @@ def df_PCA(df, show_cols = None, exclude_cols = ["POSITION"]):
     from sklearn.preprocessing import StandardScaler
     from sklearn.decomposition import PCA
     exclude_cols = [col for col in df.columns if np.any([exc in col for exc in exclude_cols])]
-    data = StandardScaler().fit_transform(df.select_dtypes(np.number).drop(exclude_cols, axis = 1))
+    data = StandardScaler().fit_transform(df.drop(exclude_cols, axis = 1).select_dtypes(np.number))
     PCA1, PCA2 = PCA(n_components=2).fit_transform(data).T
     dfn = df.select_dtypes(np.number)
 
@@ -310,6 +310,8 @@ def df_PCA(df, show_cols = None, exclude_cols = ["POSITION"]):
         plt.colorbar(points, ax = ax)
     plt.tight_layout()
     plt.show()
+
+
 
 def df_map(df, columns = ["identical match", "1nt mismatch", "2nt mismatch", "boltzmann factor"]):
     '''Visualize the number of offtarget binding sites and boltzmann factors of all queries from the target sequence'''
@@ -424,6 +426,7 @@ def df_table(DF, select_by_max = "selected", ignore_columns_like = ["VIR", "WEIG
     _s = _s.set_table_styles({pc:[{'selector': 'td', 'props': "font-weight: bold"}] for pc in position_cols},  overwrite=False, axis=0)
     _s = _s.set_table_styles({("SEQUENCE", ""):[{'selector': 'td', 'props': "font-family: monospace"}]},  overwrite=False, axis=0)
     display(_s)
+    return _s
 
 def flatten(nested_list):
     flat_list = []
@@ -463,78 +466,6 @@ def fig_dim(n):
             ncol = x
             nrow = y
     return int(min(nrow, ncol)), int(max(ncol, nrow))
-
-def df_PCA(df, show_cols = None, exclude_cols = ["POSITION"]):
-    '''plots results of all queries in a PCA scatterplot. cols = DAtaFrame columns to plot. All numeric columns are used for PCA.
-    show_cols = columns to plot. Default = None = all columns
-    exclude_cols = columns to exclude from PCA. All non-numeric columns are ignored either way.'''
-    df = df.copy()
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.decomposition import PCA
-    exclude_cols = [col for col in df.columns if np.any([exc in col for exc in exclude_cols])]
-    data = StandardScaler().fit_transform(df.select_dtypes(np.number).drop(exclude_cols, axis = 1))
-    PCA1, PCA2 = PCA(n_components=2).fit_transform(data).T
-    dfn = df.select_dtypes(np.number)
-
-    if type(show_cols) == type(None):
-        columns = dfn.columns
-    else:
-        columns = [col for col in show_cols if col in dfn.columns]
-
-    nrow, ncol = fig_dim(len(columns))
-
-    fig, axes = plt.subplots(nrow, ncol, figsize = (2.5*ncol, 2*nrow))
-    for col, ax in zip(columns, np.array([axes]).flatten()):
-        points = ax.scatter(PCA1, PCA2, c = dfn[col], s = 5, alpha = 1, cmap = ["Spectral_r", "Spectral"][int(col == "POSITION")]) # Position has the cmap the other way around to be consistent with the table, while all other numbers use _r so that high = bad numbers = red similar to table again
-        ax.set_title(col)
-        ax.set_yticks([])
-        ax.set_xticks([])
-        plt.colorbar(points, ax = ax)
-    plt.tight_layout()
-    plt.show()
-
-def df_map(df, columns = ["identical match", "1nt mismatch", "2nt mismatch", "boltzmann factor"]):
-    '''Visualize the number of offtarget binding sites and boltzmann factors of all queries from the target sequence'''
-    df = df.copy()
-    for col in columns:
-        _cols = df.columns[np.array([col in _c for _c in df.columns])]
-        col1 = _cols[["sum" in _c for _c in _cols]][0]
-        col2 = _cols[["max" in _c for _c in _cols]][0]
-        print(col1)
-        _min = 0
-        if "W." in col1: _min = 0
-        sel = df[df[col2]==_min]
-
-        plt.figure(figsize = (20, 3))
-        sy = np.round(0.66 * df[col1].mean() / df[col2].mean(), 0).astype(int) # rescaling for the lower half of the plot, only visual
-        plt.bar(df.POSITION,  df[col1].values, label = "total sum in transcriptome", width = 1, color = "tab:cyan")
-        plt.bar(df.POSITION, -df[col2].values*sy,  label = "max per transcript", width = 1, color = "tab:purple")
-        if len(sel) > 0 and df[col2].min() == 0:
-            plt.bar(sel.POSITION, .04*df[col1].max(), bottom = -.02*df[col2].max()*sy, label = f"no {col} off-target binding sites in any transcript", color = "black", width = 1)
-        plt.xlabel("target candidates")
-        yl = plt.yticks()[0]
-        yl[yl<0] /= sy
-        yl = np.unique(yl.round().astype(int))
-        yt = yl.copy()
-        yt[yt<0] *= sy
-        plt.yticks(yt, np.abs(yl))
-        plt.legend();
-
-        if not  "oltzman" in col:
-            plt.ylabel(f"number of {col} \n off-target binding sites");
-
-            if len(sel) == 0:
-                plt.title(f"no candidate without {col} off-target binding sites found")
-            elif df[col2].min() == 0:
-                plt.title(f"{len(sel)} candidates without {col} off-target binding sites found")
-            else:
-                plt.title(f"{len(sel)} candidates with max {round(df[col2].min())}x {col} off-target binding sites found")
-        else: 
-            plt.title("relative boltzmann factors normalised to BF of target sequence")
-            plt.ylabel(f"{col} of \n off-target binding sites");
-
-
-        plt.show()
 
 def _col_weights(col):
     col_name = col.name
