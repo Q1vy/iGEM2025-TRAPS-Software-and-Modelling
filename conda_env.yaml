@@ -1,14 +1,13 @@
-name: igem
+name: seastar
 channels:
   - conda-forge
 dependencies:
-  - jupyterlab
-  - scipy
-  - pandas
-  - matplotlib
-  - tqdm
-  - joblib
-  - dask
-  - distributed
-  - numba
-  - scikit-learn
+ - joblib>=1.5.2
+ - jupyterlab>=4.4.7
+ - matplotlib>=3.10.6
+ - numba>=0.61.2
+ - pandas>=2.3.2
+ - pathlib>=1.0.1
+ - scikit-learn>=1.7.2
+ - scipy>=1.16.1
+ - tqdm>=4.67.1

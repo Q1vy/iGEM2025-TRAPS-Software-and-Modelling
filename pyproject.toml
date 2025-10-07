@@ -1,0 +1,19 @@
+[project]
+name = "igem2025-traps-software-and-modelling"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "joblib>=1.5.2",
+    "jupyterlab>=4.4.7",
+    "matplotlib>=3.10.6",
+    "mplcyberpunk>=0.7.6",
+    "numba>=0.61.2",
+    "pandas>=2.3.2",
+    "pathlib>=1.0.1",
+    "qbstyles>=0.1.4",
+    "scikit-learn>=1.7.2",
+    "scipy>=1.16.1",
+    "tqdm>=4.67.1",
+]
