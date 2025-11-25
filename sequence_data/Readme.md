@@ -6,3 +6,6 @@
  
 ## Baseline TPMs
  - from ebi expression atlas
+ 
+## mCherry secondary structure
+ - done using vienna RNA

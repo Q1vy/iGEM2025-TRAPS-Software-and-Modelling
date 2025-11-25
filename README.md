@@ -1,41 +1,34 @@
-# iGEM2025-TRAPS-Software
-Repository for Software and Modelling done for the TU-Dresden team for iGEM2025 competition.
-General topic: RNA-binding Proteins 
-- predicting binding affinities
-- sequence comparison for target selection
+#  SEA-STAR - Team TU-Dresden 2025 Software Tool
+side effect aware target site ranking
+
+> Additionally: the code for the image analysis we used for our experimental result of our project can be found in the image-analysis branch.
+
+## Abstract
+Our software compares sequence data of a target RNA and a (quantitative) transcriptome to evaluate which binding sites on the target (= queries) have the lowest probability for undesirable binding interactions with the transcriptome (= reference library). It reads transcriptome sequences from FASTA and can add expression atlas data (by EMBL-EBI) to use quantitative transcriptome dataset for binding affinity estimations. It is designed with sequence based probes of any length and adjustable binding strength (e.g. sgRNA of Cas13 or Pumilio RBPs) in mind, allowing users to rank the specificity of single queries, or query groups (when using multiple probes simultaneously to minimize overlapping off-target effects). We also show how to use secondary structure based binding site availability scores from vienna RNA within out tool.
+
+## How does it work
+Have a look at our [team website](https://2025.igem.wiki/tu-dresden/software) and in the 'statmech_binding_model.ipynb' for more details.
 
 
+## Installation
+ - download / clone this repository
+ - set up python dependencies using uv, conda or pip
+ - Have fun!
 
-### Content description:
-#### Main target search
- given a target sequence (of an RNA to bind), can find subsequences of a given length (binding sites) that are as unique compared to reference sequences (transcriptom).
-- New: 
-  - weighted analysis: each transcript in the transcriptome can have its own statistical weight e.g. concentration
-  - combinatorial optimization for tetramers: does not only find the best pumbys, but can optimize a selection of 4 pumbys.
-  - Total runtime < 5min 
-- Next:
-  - validate and fix unweighted workflow (mostly focused on weighted recently)
-  - combinatorial optimization for k-mers
-  - secondary RNA structure -> each potential binding site gets its own weight
-  - convert from current functional style to a more object oriented use experience
-  - reintroduce restriction enzyme avoidence
-  - switch away from csv for sequence comparison result storage: array representation is a bad
-Related files
- - target search test: demonstration and development notebook for new algorithms and functions on random sequence data. Finished features get automatically written into main_search.py to be later imported into target search main.
- - target search alt: quick evaluatoin of our first selection of binding sites based on unweighted transcriptome data -> seems to hold up quiet well.
- - sequence reader: demonstration and development notebook for reading, decoding and preprocessing sequence data. Finished features get automatically written into sequence_reader.py to be later imported into target search main.
+ >For new versions and contributions please look [here](https://github.com/Q1vy/iGEM2025-TRAPS-Software-and-Modelling)
 
-#### Modeling
-simple Boltzman statistics, to predict the binding interactions of RNA binding proteins with their specific target, and off-target interactions with the transcriptome. 
-- Next: 
-  - include high valency binding dynamics -> increased affinity due to spatial correlation of binding partners
-    - either model probabilistic, stepwise binding dynamics
-    - or as effective on bond with the energy of the sum of all the high valency interactions 
-  - include aspects of condensates or polymer physics
+## Getting started
+> Most core utilities are defined in main_search.py and sequence_reader.py. <br>
+> The jupyter notebooks contain implementations on how to use them.
 
-### Science communication / teaching
-- Todo: simpler and shorter notebooks explaining aspects of the algorithms and datastructures used here
+Implementation notebooks by simplicity
+- target_search_mini: using random sequence data to show the simplest way of ranking single binding site of a target RNA against a transcriptome without expression levels
+- target_search_mCherry: using quantitative sequence data AND [Vienna RNA](http://rna.tbi.univie.ac.at/) guide scores to show a simple way of ranking single binding site of a target RNA against a transcriptome dataaset containing expression levels
+- target_search_dev has definitions, explanations and usage (on random data) of all functions in full detail, also showing an implementation of evaluating of groups of queries simultaneously to avoid overlapping off-target effects, which is not yet part of main.py
+- Pumby and Cas13 are (older) notebooks we used to choose our sequences for our project. Both include an evaluation of query groups, and CAS13 also uses ViennaRNA guidescores.
+- eval shows how to estimate tbe affinity of a single (or a few) binding sites, not searching through all
+## Authors and acknowledgment
+Seastar: [Paul Stark](https://github.com/Q1vy)
 
-### Git-orga
-- diffs of notebooks are messy, look for alternative
-
+## Recent
+ - new V2 in progress, goal: instead of a fixed k=[0, 1, 2], make it dynamic and implement group evaluation into .py library file
